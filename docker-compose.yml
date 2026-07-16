@@ -1,4 +1,4 @@
-version: '3'
+version: "3.8"
 services:
   app:
     build:
@@ -9,5 +9,12 @@ services:
       BILIARCHIVER_USERNAME: ${BILIARCHIVER_USERNAME}
       BILIARCHIVER_API: ${BILIARCHIVER_API}
       BILIARCHIVER_BOT: ${BILIARCHIVER_BOT}
+      BILIARCHIVER_ENABLE_BLACKLIST: ${BILIARCHIVER_ENABLE_BLACKLIST:-false}
     ports:
       - "5173:5173"
+    volumes:
+      - biliarchiverbot-config:/app/config
+    restart: unless-stopped
+
+volumes:
+  biliarchiverbot-config:

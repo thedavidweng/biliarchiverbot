@@ -4,15 +4,21 @@ on:
   pull_request:
   push:
     branches: ['main']
+    tags:
+      - 'v*'
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -63,25 +69,53 @@ jobs:
 
       - name: Smoke-test production container
         run: |
+          set -eux
+          docker volume create biliarchiverbot-ci-config
           docker run -d --name biliarchiverbot-ci \
             -p 5173:5173 \
+            -v biliarchiverbot-ci-config:/app/config \
             -e BILIARCHIVER_WEBAPP=https://example.com/ \
             -e BILIARCHIVER_USERNAME=example \
             -e BILIARCHIVER_API=https://example.com/ \
             -e BILIARCHIVER_BOT=0000000000:TEST \
+            -e BILIARCHIVER_ENABLE_BLACKLIST=true \
             biliarchiverbot:ci
-          for i in $(seq 1 30); do
+
+          cleanup() {
+            docker rm -f biliarchiverbot-ci >/dev/null 2>&1 || true
+            docker volume rm biliarchiverbot-ci-config >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          for i in $(seq 1 45); do
             if wget -q --spider http://127.0.0.1:5173/favicon.png; then
-              echo "container is healthy"
-              docker rm -f biliarchiverbot-ci
-              exit 0
+              break
+            fi
+            if [ "$i" -eq 45 ]; then
+              echo "container failed to become healthy"
+              docker logs biliarchiverbot-ci || true
+              exit 1
             fi
             sleep 1
           done
-          echo "container failed to become healthy"
-          docker logs biliarchiverbot-ci || true
-          docker rm -f biliarchiverbot-ci || true
-          exit 1
+
+          # Dynamic pages (SSR / server load)
+          wget -q -O /tmp/home.html http://127.0.0.1:5173/
+          grep -qi 'Biliarchiver' /tmp/home.html
+          wget -q -O /tmp/debug.html http://127.0.0.1:5173/debug
+          grep -qi 'Debug' /tmp/debug.html
+
+          # Entrypoint must drop privileges for PID 1
+          app_uid="$(docker exec biliarchiverbot-ci awk '/^Uid:/{print $2}' /proc/1/status)"
+          test "$app_uid" = "10001"
+
+          # Config volume must be writable by the app user after entrypoint chown
+          docker exec -u 10001:10001 biliarchiverbot-ci sh -c \
+            'printf "%s\n" "{\"admins\":[1]}" > /app/config/admins.json; cat /app/config/admins.json'
+          docker exec -u 10001:10001 biliarchiverbot-ci sh -c \
+            'printf "%s\n" "{\"blacklist\":[]}" > /app/config/blacklist.json; ls -la /app/config'
+
+          echo "smoke tests passed"
 
       - name: Build Docker image (arm64, no load)
         uses: docker/build-push-action@v7
@@ -92,3 +126,55 @@ jobs:
           tags: biliarchiverbot:ci-arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  publish:
+    needs: verify
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        id: push
+        uses: docker/build-push-action@v7
+        with:
+          platforms: linux/arm64,linux/amd64
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

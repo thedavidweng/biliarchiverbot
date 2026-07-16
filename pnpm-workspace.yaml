@@ -5,7 +5,7 @@ packages:
 engineStrict: true
 
 overrides:
-  rollup: 'npm:@rollup/wasm-node'
+  # @sveltejs/kit still depends on cookie ^0.6; keep the patched floor.
   'cookie@<0.7.0': '>=0.7.0'
 
 # svelte-virtual ships a preinstall guard that is unnecessary once installed via pnpm.

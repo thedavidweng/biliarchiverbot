@@ -31,19 +31,29 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=5173
+# Fixed IDs so named volumes / host bind mounts can be chown'd predictably.
+ENV APP_UID=10001
+ENV APP_GID=10001
 
-RUN addgroup -S app && adduser -S app -G app \
+RUN apk add --no-cache su-exec \
+  && addgroup -g "$APP_GID" -S app \
+  && adduser -u "$APP_UID" -S -G app app \
   && mkdir -p /app/config \
   && chown -R app:app /app
 
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/build ./build
 COPY --from=build --chown=app:app /app/package.json ./package.json
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-USER app
+# Entrypoint starts as root only long enough to fix /app/config ownership, then
+# permanently drops to UID/GID 10001 before running the server.
+USER root
 EXPOSE 5173
 
 HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
   CMD wget --quiet --tries=3 --spider http://127.0.0.1:5173/favicon.png || exit 1
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "build"]
