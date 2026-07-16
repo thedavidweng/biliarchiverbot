@@ -4,7 +4,6 @@ import bot from "$lib/server/index.js";
 
 const webhook = webhookCallback(bot, "sveltekit");
 
-export const POST: RequestHandler = async (event: any) => {
-  const res = webhook(event);
-  return res;
+export const POST: RequestHandler = async (event) => {
+  return (await webhook(event)) as Response;
 };
