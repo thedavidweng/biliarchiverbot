@@ -11,9 +11,10 @@
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"prepare": "svelte-kit sync || echo ''",
+		"prepare": "svelte-kit sync",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@grammyjs/auto-retry": "^2.0.2",
@@ -23,15 +24,16 @@
 		"ts-results-es": "^7.1.0"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^7.0.1",
+		"@sveltejs/adapter-node": "^5.5.7",
 		"@sveltejs/kit": "^2.69.3",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@types/node": "^24.13.3",
 		"svelte": "^5.56.5",
-		"svelte-check": "^4.7.3",
+		"svelte-check": "~4.7.2",
 		"svelte-virtual": "1.0.0-next.22",
 		"tslib": "^2.8.1",
 		"typescript": "~6.0.3",
-		"vite": "^8.1.4"
+		"vite": "^8.1.4",
+		"vitest": "^4.1.10"
 	}
 }

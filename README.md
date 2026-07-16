@@ -10,6 +10,8 @@ The bot stores configuration in the `config` directory:
 
 ## Using Docker
 
+The published image runs the production Node server (`adapter-node` → `node build`) on port `5173`.
+
 ``` shell
 docker run -d \
   --name biliarchiverbot \
@@ -41,7 +43,7 @@ If you don't have public IP, you can use [ngrok](https://ngrok.com/) to expose y
 
 ## Deploy to Vercel
 
-> May have some issues with complicated bot commands, sometimes might not work as expected.
+> Not the fully supported path. This project targets Docker + `@sveltejs/adapter-node` for production. File-based admin/blacklist storage needs a persistent filesystem and will not work on Vercel. Bot commands may also behave inconsistently on serverless hosts.
 
 1. fork this repository
 2. open vercel.com and create a new project

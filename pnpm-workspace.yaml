@@ -11,15 +11,3 @@ overrides:
 # svelte-virtual ships a preinstall guard that is unnecessary once installed via pnpm.
 allowBuilds:
   svelte-virtual: false
-
-# Allow freshly published toolchain packages during intentional upgrades.
-minimumReleaseAgeExclude:
-  - svelte-check
-  - svelte
-  - '@sveltejs/*'
-  - vite
-  - grammy
-  - fast-xml-parser
-  - ts-results-es
-  - typescript
-  - '@types/node'
