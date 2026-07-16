@@ -1,11 +1,11 @@
 import { None, Option, Some } from "ts-results-es";
 import Bvid from "../bv.js";
-import { XMLParser } from "fast-xml-parser";
+import { parseArchiveSearchNumFound } from "./archive-search-xml.js";
 
 interface ArchivedItem {
-  added_time: number; 
-  bvid: string; 
-  status: string; 
+  added_time: number;
+  bvid: string;
+  status: string;
 }
 
 export class BiliArchiver {
@@ -39,7 +39,9 @@ export class BiliArchiver {
       const res = await fetch(url.toString());
       const items = (await res.json())?.items;
       // filter those not finished
-      return items.filter((item: ArchivedItem) => item.status !== "finished").map((item: ArchivedItem) => item.bvid);
+      return items
+        .filter((item: ArchivedItem) => item.status !== "finished")
+        .map((item: ArchivedItem) => item.bvid);
     } catch (e) {
       console.error(e);
       return [];
@@ -60,22 +62,22 @@ export class BiliArchiver {
 
   async check(bv: Bvid): Promise<Option<URL>> {
     try {
-      const url = bv.getMetadataUrl()
+      const url = bv.getMetadataUrl();
       const res = await fetch(url.toString(), {
         headers: {
-          "Accept": "application/json",
-          "Content-Type": "application/json"
-        }
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
       });
       const json = await res.json();
-      const mp4 = json?.files?.find((file: any) => file.name.endsWith(".mp4"))
+      const mp4 = json?.files?.find((file: any) => file.name.endsWith(".mp4"));
       if (!mp4) {
-        return None
+        return None;
       }
-      return Some(bv.getItemUrl())
+      return Some(bv.getItemUrl());
     } catch (e) {
       console.warn(e);
-      return None
+      return None;
     }
   }
 
@@ -83,28 +85,26 @@ export class BiliArchiver {
     try {
       const res = await fetch(bv.getSearchXmlUrl().toString());
       const text = await res.text();
-      // const parser = new DOMParser();
-      // const doc = parser.parseFromString(text, "text/xml");
-      // const numFound = doc.getElementsByTagName("result")[0].getAttribute("numFound");
-      const parser = new XMLParser({
-        ignoreAttributes: false
-      })
-      const obj = parser.parse(text)
-      const numFound = obj?.response?.result?.["@_numFound"]
-      console.log({ numFound }); // 打印 numFound 的值
+      const numFound = parseArchiveSearchNumFound(text);
+      console.log({ numFound });
       if (!numFound) {
-        return None
+        return None;
       }
-      return Some(bv.getItemUrl())
-    }
-    catch (e) {
+      return Some(bv.getItemUrl());
+    } catch (e) {
       console.error(e);
-      return None
+      return None;
     }
   }
 
-  async add_from_source(source_type: string, source_id: string): Promise<Array<string>> {
-    const url = new URL(`/get_bvids_by/${source_type}/${source_id}`, this.endpoint);
+  async add_from_source(
+    source_type: string,
+    source_id: string,
+  ): Promise<Array<string>> {
+    const url = new URL(
+      `/get_bvids_by/${source_type}/${source_id}`,
+      this.endpoint,
+    );
     console.info(`POST ${url.toString()}`);
     try {
       const res = await fetch(url.toString(), {
