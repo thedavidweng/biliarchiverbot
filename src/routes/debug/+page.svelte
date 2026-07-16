@@ -1,10 +1,5 @@
 <script lang="ts">
-  import type { Config } from "@sveltejs/kit";
-  export const config: Config = {
-    runtime: "edge",
-  };
-
-  let textareaValue = "None";
+  let textareaValue = $state("None");
   function setTelegramMiniappParams() {
     // Once the script is connected, a window.Telegram.WebApp object will become available with the following fields:
     // @ts-ignore
@@ -21,7 +16,7 @@
     <h2>Biliarchiver Bot Debug Page</h2>
   </nav>
   <textarea readonly>{textareaValue}</textarea>
-  <button on:click={setTelegramMiniappParams}>Get data</button>
+  <button onclick={setTelegramMiniappParams}>Get data</button>
 </main>
 
 <style>

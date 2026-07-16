@@ -1,20 +1,17 @@
 <script lang="ts">
-  import type { Config } from "@sveltejs/kit";
   import { List } from "svelte-virtual";
   import type { PageData } from "./$types.js";
   import Bvid from "$lib/bv.js";
-  export let data: PageData;
-  export const config: Config = {
-    runtime: "edge",
-  };
 
-  let scrollPosition = 0;
+  let { data }: { data: PageData } = $props();
+
+  let scrollPosition = $state(0);
 
   function timestamp2time(i: number) {
     return new Date(i * 1000).toLocaleDateString();
   }
 
-  $: items =
+  const items = $derived(
     data?.archived?.items.map((x) => {
       const bv = new Bvid(x.bvid);
       return {
@@ -25,7 +22,8 @@
         cover: string;
         link: string;
       } & typeof x;
-    }) || [];
+    }) || [],
+  );
 </script>
 
 <svelte:head>
@@ -47,50 +45,46 @@
       itemSize={320}
       bind:scrollPosition
     >
-      <li
-        slot="item"
-        let:index
-        let:style
-        style={style.replace("width: 100%;", "width: 90%;")}
-      >
-        <div class="info">
-          <h3>
-            <a
-              class="bvid"
-              href="https://www.bilibili.com/video/{items[index].bvid}"
-              >{items[index].bvid}</a
-            >
-          </h3>
-          <time class="hint">{timestamp2time(items[index].added_time)}</time>
-          <storng>{items[index].status}</storng>
-          <span>{items[index].status === "finished" ? "✅" : "❌"}</span>
-        </div>
-        <div class="cover">
-          {#if items[index].status === 'finished'}
-            <a href={items[index].link}>
-              <img src={items[index].cover} alt="cover" loading="lazy" />
-              <img
-                class="hover-icon"
-                src="ia-logo.svg"
-                alt="Play on Internet Archive"
-                width="70px"
-              />
-            </a>
-          {:else}
-            <iframe
-              src="//player.bilibili.com/player.html?bvid={items[index].bvid}&autoplay=0"
-              scrolling="no"
-              border="0"
-              frameborder="no"
-              framespacing="0"
-              allowfullscreen="true"
-              width="320"
-              height="180"
-              title="Bilibili Player"
-            ></iframe>
-          {/if}
-        </div>
-      </li>
+      {#snippet item({ index, style })}
+        <li style={style.replace("width: 100%;", "width: 90%;")}>
+          <div class="info">
+            <h3>
+              <a
+                class="bvid"
+                href="https://www.bilibili.com/video/{items[index].bvid}"
+                >{items[index].bvid}</a
+              >
+            </h3>
+            <time class="hint">{timestamp2time(items[index].added_time)}</time>
+            <storng>{items[index].status}</storng>
+            <span>{items[index].status === "finished" ? "✅" : "❌"}</span>
+          </div>
+          <div class="cover">
+            {#if items[index].status === "finished"}
+              <a href={items[index].link}>
+                <img src={items[index].cover} alt="cover" loading="lazy" />
+                <img
+                  class="hover-icon"
+                  src="ia-logo.svg"
+                  alt="Play on Internet Archive"
+                  width="70px"
+                />
+              </a>
+            {:else}
+              <iframe
+                src="//player.bilibili.com/player.html?bvid={items[index]
+                  .bvid}&autoplay=0"
+                scrolling="no"
+                frameborder="0"
+                allowfullscreen={true}
+                width="320"
+                height="180"
+                title="Bilibili Player"
+              ></iframe>
+            {/if}
+          </div>
+        </li>
+      {/snippet}
     </List>
   </ul>
 </main>

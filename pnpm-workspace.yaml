@@ -1,0 +1,13 @@
+# Single-package project; settings live here for pnpm 11+.
+packages:
+  - '.'
+
+engineStrict: true
+
+overrides:
+  # @sveltejs/kit still depends on cookie ^0.6; keep the patched floor.
+  'cookie@<0.7.0': '>=0.7.0'
+
+# svelte-virtual ships a preinstall guard that is unnecessary once installed via pnpm.
+allowBuilds:
+  svelte-virtual: false

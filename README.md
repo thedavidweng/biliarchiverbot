@@ -1,118 +1,114 @@
 # biliarchiverbot
 
+Supported production path: **Docker / self-hosted Node** via `@sveltejs/adapter-node`.
+
 ## Configuration & Data Storage
 
-> ⚠️ Note: File-based storage requires a persistent filesystem. This will NOT work on Vercel or similar serverless platforms. Use Docker or local deployment for admin/blacklist features.
+> File-based storage needs a persistent filesystem. Admin/blacklist features write JSON under `/app/config` and are intended for Docker or local Node deployments.
 
 The bot stores configuration in the `config` directory:
+
 - `admins.json`: Admin user IDs
 - `blacklist.json`: Blocked user IDs
 
 ## Using Docker
 
-``` shell
+The published image runs the production Node server (`adapter-node` → `node build`) on port `5173` as UID/GID `10001`.
+
+Prefer a **named volume** for config so ownership stays writable for the container user:
+
+```shell
 docker run -d \
   --name biliarchiverbot \
   -p 5173:5173 \
-  -v $(pwd)/config:/app/config \
-  -e BILIARCHIVER_WEBAPP={THE_DEPLOYED_WEBAPP_URL}\
-  -e BILIARCHIVER_USERNAME={THE_TELEGRAM_USERNAME_OF_BILIARCHIVER_BOT}\
-  -e BILIARCHIVER_API={THE_API_URL_OF_BILIARCHIVER}\
-  -e BILIARCHIVER_BOT={YOUR_BOT_TOKEN}\
-  -e BILIARCHIVER_ENABLE_BLACKLIST=true\ # Optional, if you want to enable blacklist feature, don't forget to trigger /addadmin command first
-  -e BILIARCHIVER_LOG_INTO_CHAT_ID={YOUR_CHAT_ID}\ # Optional, if you want to log into a specific chat group, you can set the chat ID here.
-  -e BILIARCHIVER_LOG_INTO_CHAT_TOPIC={YOUR_CHAT_TOPIC}\ # Optional, if you want to log into a specific chat topic, you can set the topic here.
+  -v biliarchiverbot-config:/app/config \
+  -e BILIARCHIVER_WEBAPP={THE_DEPLOYED_WEBAPP_URL} \
+  -e BILIARCHIVER_USERNAME={THE_TELEGRAM_USERNAME_OF_BILIARCHIVER_BOT} \
+  -e BILIARCHIVER_API={THE_API_URL_OF_BILIARCHIVER} \
+  -e BILIARCHIVER_BOT={YOUR_BOT_TOKEN} \
   --restart always \
   ghcr.io/saveweb/biliarchiverbot:latest
 ```
 
-If you have public IP, you can set the bot's webhook to your IP address.
+Optional environment variables (add only the ones you need):
 
-``` shell
-   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_IP_ADDRESS>:5173/bot/webhook
+```shell
+  -e BILIARCHIVER_ENABLE_BLACKLIST=true \
+  -e BILIARCHIVER_LOG_INTO_CHAT_ID={YOUR_CHAT_ID} \
+  -e BILIARCHIVER_LOG_INTO_CHAT_TOPIC={YOUR_CHAT_TOPIC} \
 ```
 
-If you don't have public IP, you can use [ngrok](https://ngrok.com/) to expose your local server to the internet, or use any other tunneling service. Caddy and Nginx are also good choices.
+If you bind-mount a host directory instead of a named volume, make it writable by UID `10001` first, for example:
 
-``` shell
-   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<TUNNELING_URL>/bot/webhook
+```shell
+mkdir -p ./config
+sudo chown -R 10001:10001 ./config
 ```
 
+If you have a public IP, set the bot webhook to your IP address:
 
-## Deploy to Vercel
+```shell
+https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<YOUR_IP_ADDRESS>:5173/bot/webhook
+```
 
-> May have some issues with complicated bot commands, sometimes might not work as expected.
+If you don't have a public IP, use [ngrok](https://ngrok.com/) or another tunnel (Caddy/Nginx also work):
 
-1. fork this repository
-2. open vercel.com and create a new project
-3. connect the project to your forked repository
-4. set the environment variables.
-
-   If you don't have a bot yet, you can create one by talking to [@BotFather](https://t.me/BotFather) on Telegram.
-
-   If you don't know the deployed URL, you can deploy the project first and then set the environment variables later.
-
-   ``` env
-    BILIARCHIVER_WEBAPP=<THE_DEPLOYED_WEBAPP_URL>
-    BILIARCHIVER_USERNAME=<THE_TELEGRAM_USERNAME_OF_BILIARCHIVER_BOT>
-    BILIARCHIVER_API=<THE_API_URL_OF_BILIARCHIVER>
-    BILIARCHIVER_BOT=<YOUR_BOT_TOKEN>
-    BILIARCHIVER_LOG_INTO_CHAT_ID=<YOUR_CHAT_ID> # Optional, if you want to log into a specific chat group, you can set the chat ID here.
-    BILIARCHIVER_LOG_INTO_CHAT_TOPIC=<YOUR_CHAT_TOPIC> # Optional, if you want to log into a specific chat topic, you can set the topic here.
-   ```
-
-5. deploy
-6. set the bot's webhook to the deployed URL. You can copy the link below and replace your bot's token and the deployed URL.
-
-   ``` shell
-   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<DEPLOY_URL>/bot/webhook
-   ```
+```shell
+https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<TUNNELING_URL>/bot/webhook
+```
 
 ## Local Development
 
-1. clone this repository
-2. install the dependencies
+1. Clone this repository
+2. Install dependencies:
 
-   ``` shell
+   ```shell
    pnpm install
    ```
-3. create a `.env` file and set the environment variables.
 
-   ``` env
-    BILIARCHIVER_WEBAPP=<THE_DEPLOYED_WEBAPP_URL>
-    BILIARCHIVER_USERNAME=<THE_TELEGRAM_USERNAME_OF_BILIARCHIVER_BOT>
-    BILIARCHIVER_API=<THE_API_URL_OF_BILIARCHIVER>
-    BILIARCHIVER_BOT=<YOUR_BOT_TOKEN>
-    BILIARCHIVER_ENABLE_BLACKLIST=true # Optional, if you want to enable blacklist feature, don't forget to trigger /addadmin command first
-    BILIARCHIVER_LOG_INTO_CHAT_ID=<YOUR_CHAT_ID> # Optional, if you want to log into a specific chat group, you can set the chat ID here.
-    BILIARCHIVER_LOG_INTO_CHAT_TOPIC=<YOUR_CHAT_TOPIC> # Optional, if you want to log into a specific chat topic, you can set the topic here.
+3. Create a `.env` file:
+
+   ```env
+   BILIARCHIVER_WEBAPP=<THE_DEPLOYED_WEBAPP_URL>
+   BILIARCHIVER_USERNAME=<THE_TELEGRAM_USERNAME_OF_BILIARCHIVER_BOT>
+   BILIARCHIVER_API=<THE_API_URL_OF_BILIARCHIVER>
+   BILIARCHIVER_BOT=<YOUR_BOT_TOKEN>
+   # Optional:
+   # BILIARCHIVER_ENABLE_BLACKLIST=true
+   # BILIARCHIVER_LOG_INTO_CHAT_ID=<YOUR_CHAT_ID>
+   # BILIARCHIVER_LOG_INTO_CHAT_TOPIC=<YOUR_CHAT_TOPIC>
    ```
-4. start the development server
 
-   ``` shell
-    pnpm dev
-    ```
-5. set the bot's webhook to the deployed URL. 
+4. Start the development server:
 
-   You may use [ngrok](https://ngrok.com/) to expose your local server to the internet, or open the port 5173 on your router or the VPS. Then you can copy the link below and replace your bot's token and the deployed URL.
+   ```shell
+   pnpm dev
+   ```
 
-   ``` shell
+5. Point the bot webhook at your tunnel or public URL:
+
+   ```shell
    https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=<DEPLOY_URL>/bot/webhook
    ```
 
 ## Manage
 
-Please checkout `/admin` command for more information. 
+Please checkout `/admin` command for more information.
 
 ### Admin Management
+
 The first user to run `/addadmin` becomes the admin. After that, only admins can add new admins using:
+
 ```shell
 /addadmin <USER_ID>
 ```
 
 ### User Management
+
 Admins can blacklist users using:
+
 ```shell
 /blacklist <USER_ID>
 ```
+
 Blacklisted users will be unable to use the bot and will be directed to contact the first admin.
