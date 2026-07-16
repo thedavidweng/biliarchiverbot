@@ -1,4 +1,4 @@
-FROM --platform=$TARGETARCH node:22-alpine AS base
+FROM --platform=$TARGETARCH node:24-alpine AS base
 LABEL org.opencontainers.image.source=https://github.com/saveweb/biliarchiverbot
 
 ENV PNPM_HOME="/pnpm"
